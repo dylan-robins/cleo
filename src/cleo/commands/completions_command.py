@@ -12,10 +12,12 @@ from typing import TYPE_CHECKING
 from typing import ClassVar
 from typing import cast
 
+from jinja2 import Environment
+from jinja2 import PackageLoader
+
 from cleo import helpers
 from cleo._compat import shell_quote
 from cleo.commands.command import Command
-from cleo.commands.completions.templates import TEMPLATES
 from cleo.exceptions import CleoRuntimeError
 
 
@@ -42,6 +44,12 @@ class CompletionsCommand(Command):
     SUPPORTED_SHELLS = ("bash", "zsh", "fish")
 
     hidden = True
+
+    env = Environment(
+        loader=PackageLoader("cleo.commands", "templates"),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
 
     help = """
 One can generate a completion script for `<options=bold>{script_name}</>` \
@@ -202,16 +210,19 @@ script. Consult your shells documentation for how to add such directives.
                 "",  # newline
             ]
 
-        return TEMPLATES["bash"] % {
-            "script_name": script_name,
-            "function": function,
-            "opts": " ".join(opts),
-            "cmds": " ".join(cmds),
-            "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
-            "compdefs": "\n".join(
-                f"complete -o default -F {function} {alias}" for alias in aliases
-            ),
-        }
+        template = self.env.get_template("completions.bash.jinja")
+        return template.render(
+            {
+                "script_name": script_name,
+                "function": function,
+                "opts": " ".join(opts),
+                "cmds": " ".join(cmds),
+                "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
+                "compdefs": "\n".join(
+                    f"complete -o default -F {function} {alias}" for alias in aliases
+                ),
+            }
+        )
 
     def render_zsh(self) -> str:
         script_name, script_path = self._get_script_name_and_path()
@@ -247,14 +258,19 @@ script. Consult your shells documentation for how to add such directives.
                 "",  # newline
             ]
 
-        return TEMPLATES["zsh"] % {
-            "script_name": script_name,
-            "function": function,
-            "opts": " ".join(opts),
-            "cmds": " ".join(cmds),
-            "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
-            "compdefs": "\n".join(f"compdef {function} {alias}" for alias in aliases),
-        }
+        template = self.env.get_template("completions.zsh.jinja")
+        return template.render(
+            {
+                "script_name": script_name,
+                "function": function,
+                "opts": " ".join(opts),
+                "cmds": " ".join(cmds),
+                "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
+                "compdefs": "\n".join(
+                    f"compdef {function} {alias}" for alias in aliases
+                ),
+            }
+        )
 
     def render_fish(self) -> str:
         script_name, script_path = self._get_script_name_and_path()
@@ -323,14 +339,17 @@ script. Consult your shells documentation for how to add such directives.
             ]
             namespaces.add(namespace)
 
-        return TEMPLATES["fish"] % {
-            "script_name": script_name,
-            "function": function,
-            "opts": "\n".join(opts),
-            "cmds": "\n".join(cmds),
-            "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
-            "cmds_names": " ".join(sorted(namespaces)),
-        }
+        template = self.env.get_template("completions.fish.jinja")
+        return template.render(
+            {
+                "script_name": script_name,
+                "function": function,
+                "opts": "\n".join(opts),
+                "cmds": "\n".join(cmds),
+                "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
+                "cmds_names": " ".join(sorted(namespaces)),
+            }
+        )
 
     def get_shell_type(self) -> str:
         shell = os.getenv("SHELL")

@@ -34,6 +34,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
+jinja2 = "^3.1.4"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5"
@@ -102,10 +103,17 @@ pretty = true
 addopts = "-q"
 testpaths = ["tests"]
 
+[tool.coverage.run]
+omit = [
+  "*.jinja",
+]
+
 [tool.coverage.report]
 omit = [
   "src/cleo/_compat.py",
+  "*.jinja",
 ]
+
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
