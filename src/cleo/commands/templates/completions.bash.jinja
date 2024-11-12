@@ -21,12 +21,16 @@
 
     # completing for an option
     if [[ ${cur} == --* ]] ; then
-        opts="{{ opts }}"
+        opts="{{ opts|join(' ') }}"
 
         case "$com" in
 
-{{ cmds_opts }}
+{% for cmd, opts in cmds.items() %}
+            ({{ cmd }})
+            opts="${opts} {{ opts|join(' ') }}"
+            ;;
 
+{% endfor %}
         esac
 
         COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
@@ -37,7 +41,7 @@
 
     # completing for a command
     if [[ $cur == $com ]]; then
-        coms="{{ cmds }}"
+        coms="{{ cmds.keys()|join(' ') }}"
 
         COMPREPLY=($(compgen -W "${coms}" -- ${cur}))
         __ltrim_colon_completions "$cur"
@@ -46,4 +50,6 @@
     fi
 }
 
-{{ compdefs }}
+{% for alias in aliases %}
+complete -o default -F {{ function }} {{ alias }}
+{% endfor %}

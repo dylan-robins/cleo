@@ -186,41 +186,31 @@ script. Consult your shells documentation for how to add such directives.
 
         # Global options
         assert self.application
-        opts = [
+        opts: list[str] = [
             f"--{opt.name}"
             for opt in sorted(self.application.definition.options, key=lambda o: o.name)
         ]
 
         # Commands + options
-        cmds = []
-        cmds_opts = []
+        cmds: dict[list[str]] = {}
         for cmd in sorted(self.application.all().values(), key=lambda c: c.name or ""):
             if cmd.hidden or not (cmd.enabled and cmd.name):
                 continue
             command_name = shell_quote(cmd.name) if " " in cmd.name else cmd.name
-            cmds.append(command_name)
-            options = " ".join(
-                f"--{opt.name}".replace(":", "\\:")
+            cmds[command_name] = []
+            cmds[command_name] = [
+                f"--{opt.name}"
                 for opt in sorted(cmd.definition.options, key=lambda o: o.name)
-            )
-            cmds_opts += [
-                f"            ({command_name})",
-                f'            opts="${{opts}} {options}"',
-                "            ;;",
-                "",  # newline
             ]
 
         template = self.env.get_template("completions.bash.jinja")
         return template.render(
             {
                 "script_name": script_name,
+                "aliases": aliases,
                 "function": function,
-                "opts": " ".join(opts),
-                "cmds": " ".join(cmds),
-                "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
-                "compdefs": "\n".join(
-                    f"complete -o default -F {function} {alias}" for alias in aliases
-                ),
+                "opts": opts,
+                "cmds": cmds,
             }
         )
 
@@ -277,15 +267,14 @@ script. Consult your shells documentation for how to add such directives.
         function = self._generate_function_name(script_name, script_path)
 
         def sanitize(s: str) -> str:
-            return self._io.output.formatter.remove_format(s).replace("'", "\\'")
+            return self._io.output.formatter.remove_format(s)
 
         # Global options
         assert self.application
-        opts = [
-            f"complete -c {script_name} -n '__fish{function}_no_subcommand' "
-            f"-l {opt.name} -d '{sanitize(opt.description)}'"
+        opts: dict[str, str] = {
+            opt.name: sanitize(opt.description)
             for opt in sorted(self.application.definition.options, key=lambda o: o.name)
-        ]
+        }
 
         # Commands + options
         cmds = []
@@ -344,7 +333,7 @@ script. Consult your shells documentation for how to add such directives.
             {
                 "script_name": script_name,
                 "function": function,
-                "opts": "\n".join(opts),
+                "opts": opts,
                 "cmds": "\n".join(cmds),
                 "cmds_opts": "\n".join(cmds_opts[:-1]),  # trim trailing newline
                 "cmds_names": " ".join(sorted(namespaces)),

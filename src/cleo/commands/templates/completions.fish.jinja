@@ -8,7 +8,9 @@ function __fish{{ function }}_no_subcommand
 end
 
 # global options
-{{ opts }}
+{% for opt, descr in opts.items() %}
+complete -c {{ script_name }} -n '__fish{{ function }}_no_subcommand' -l {{ opt }} -d '{{ descr }}'
+{% endfor %}
 
 # commands
 {{ cmds }}
